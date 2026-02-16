@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TerraVision AI - Image Analysis Dashboard</title>
+    <link rel="stylesheet" href="static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                    <circle cx="16" cy="16" r="14" fill="#4CAF50" opacity="0.2"/>
+                    <path d="M16 8L20 14H12L16 8Z" fill="#4CAF50"/>
+                    <path d="M10 18L14 24H18L22 18H10Z" fill="#2E7D32"/>
+                </svg>
+                <span class="brand-text">TerraVision AI</span>
+            </div>
+            <div class="nav-links">
+                <a href="#" class="nav-link active" data-mode="upload">Photo Upload</a>
+                <a href="#" class="nav-link" data-mode="stream">Live Stream</a>
+                <a href="#" class="nav-link" data-mode="pathplan">Path Planning</a>
+                <a href="#" class="nav-link" data-mode="mission">Mission Simulation</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Header Section -->
+        <header class="header">
+            <h1>Terrain Image Analysis Dashboard</h1>
+            <p class="subtitle" id="modeSubtitle">Upload terrain images for AI-powered environmental analysis</p>
+        </header>
+
+        <!-- Live Streaming Section -->
+        <div class="streaming-section" id="streamingSection" style="display: none;">
+            <!-- Stream Controls -->
+            <div class="card stream-controls">
+                <h2 class="card-title">Real-Time Stream Control</h2>
+                <div class="control-buttons">
+                    <button class="btn-primary" id="startStreamBtn">▶ Start Stream</button>
+                    <button class="btn-secondary" id="stopStreamBtn" disabled>⏹ Stop Stream</button>
+                    <button class="btn-secondary" id="viewHistoryBtn">📊 View History</button>
+                </div>
+                <div class="stream-status">
+                    <span class="status-indicator" id="statusIndicator">●</span>
+                    <span id="streamStatus">Disconnected</span>
+                    <span class="frame-counter" id="frameCounter">Frame: 0</span>
+                </div>
+            </div>
+
+            <!-- Live Alerts -->
+            <div class="card alerts-card" id="alertsCard" style="display: none;">
+                <h2 class="card-title">🚨 Live Alerts</h2>
+                <div class="alerts-container" id="alertsContainer"></div>
+            </div>
+
+            <!-- Live Metrics -->
+            <div class="live-metrics" id="liveMetrics" style="display: none;">
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-icon" style="background: #E3F2FD;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="#2196F3">
+                                <path d="M12 2L2 7L12 12L22 7L12 2Z"/>
+                                <path d="M2 17L12 22L22 17V12L12 17L2 12V17Z" opacity="0.6"/>
+                            </svg>
+                        </div>
+                        <div class="metric-content">
+                            <p class="metric-label">Confidence</p>
+                            <p class="metric-value" id="liveConfidence">--</p>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-icon" style="background: #FFF3E0;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="#FF9800">
+                                <path d="M12 2L15 8L22 9L17 14L18 21L12 18L6 21L7 14L2 9L9 8L12 2Z"/>
+                            </svg>
+                        </div>
+                        <div class="metric-content">
+                            <p class="metric-label">Hazard Level</p>
+                            <p class="metric-value hazard-badge" id="liveHazard">--</p>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-icon" style="background: #E8F5E9;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="#4CAF50">
+                                <path d="M12 2C8 2 5 5 5 9C5 13 12 22 12 22C12 22 19 13 19 9C19 5 16 2 12 2Z"/>
+                            </svg>
+                        </div>
+                        <div class="metric-content">
+                            <p class="metric-label">Vegetation</p>
+                            <p class="metric-value" id="liveVegetation">--</p>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-icon" style="background: #E1F5FE;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="#03A9F4">
+                                <path d="M12 2C12 2 7 6 7 12C7 15.31 9.69 18 13 18C16.31 18 19 15.31 19 12C19 6 14 2 14 2H12Z"/>
+                            </svg>
+                        </div>
+                        <div class="metric-content">
+                            <p class="metric-label">Moisture</p>
+                            <p class="metric-value" id="liveMoisture">--</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2 class="card-title">Live Terrain Analysis</h2>
+                    <div class="analysis-item">
+                        <div class="analysis-header">
+                            <span class="analysis-label">Terrain Roughness</span>
+                            <span class="analysis-percentage" id="liveRoughnessPercent">--</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="liveRoughnessBar" style="width: 0%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="speed-recommendation">
+                        <div class="speed-icon">🚗</div>
+                        <div class="speed-content">
+                            <p class="speed-label">Recommended Speed</p>
+                            <p class="speed-value" id="liveSpeed">-- km/h</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mission Simulation Section -->
+        <div class="mission-section" id="missionSection" style="display: none;">
+            <!-- Mission Control -->
+            <div class="card mission-control-card">
+                <h2 class="card-title">🚀 Mission Control</h2>
+                <div class="mission-setup">
+                    <p class="mission-instruction">First, generate a terrain map and select a path in Path Planning mode, then return here to start the mission.</p>
+                    <div class="control-buttons">
+                        <button class="btn-primary" id="startMissionBtn" disabled>🎯 Start Mission</button>
+                        <button class="btn-secondary" id="pauseMissionBtn" disabled>⏸ Pause</button>
+                        <button class="btn-secondary" id="stopMissionBtn" disabled>⏹ Stop Mission</button>
+                    </div>
+                </div>
+                <div class="mission-status-bar">
+                    <div class="status-item">
+                        <span class="status-label">Mission Status:</span>
+                        <span class="status-value" id="missionStatus">Ready</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Progress:</span>
+                        <span class="status-value" id="missionProgress">0%</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Current Position:</span>
+                        <span class="status-value" id="currentPosition">--</span>
+                    </div>
+                </div>
+                <div class="progress-bar" style="margin-top: 1rem;">
+                    <div class="progress-fill" id="missionProgressBar" style="width: 0%;"></div>
+                </div>
+            </div>
+
+            <!-- Live Navigation View -->
+            <div class="card navigation-card" id="navigationCard" style="display: none;">
+                <h2 class="card-title">🗺️ Live Navigation</h2>
+                <canvas id="navigationCanvas" width="800" height="600"></canvas>
+            </div>
+
+            <!-- Live Mission Metrics -->
+            <div class="mission-metrics" id="missionMetrics" style="display: none;">
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-icon" style="background: #E3F2FD;">
+                            <span style="font-size: 1.5rem;">📍</span>
+                        </div>
+                        <div class="metric-content">
+                            <p class="metric-label">Distance Traveled</p>
+                            <p class="metric-value" id="distanceTraveled">0</p>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-icon" style="background: #FFF3E0;">
+                            <span style="font-size: 1.5rem;">⚠️</span>
+                        </div>
+                        <div class="metric-content">
+                            <p class="metric-label">Hazards Encountered</p>
+                            <p class="metric-value" id="hazardsCount">0</p>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-icon" style="background: #E8F5E9;">
+                            <span style="font-size: 1.5rem;">⏱️</span>
+                        </div>
+                        <div class="metric-content">
+                            <p class="metric-label">Mission Time</p>
+                            <p class="metric-value" id="missionTime">0:00</p>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-icon" style="background: #E1F5FE;">
+                            <span style="font-size: 1.5rem;">🎯</span>
+                        </div>
+                        <div class="metric-content">
+                            <p class="metric-label">Remaining Distance</p>
+                            <p class="metric-value" id="remainingDistance">--</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mission Summary Report -->
+            <div class="card mission-summary-card" id="missionSummaryCard" style="display: none;">
+                <h2 class="card-title">📊 Mission Summary Report</h2>
+                <div class="summary-content">
+                    <div class="summary-header">
+                        <h3 id="summaryTitle">Mission Completed Successfully!</h3>
+                        <span class="summary-badge" id="summaryBadge">✓ SUCCESS</span>
+                    </div>
+                    <div class="summary-stats">
+                        <div class="summary-stat">
+                            <span class="summary-label">Total Distance:</span>
+                            <span class="summary-value" id="summaryDistance">--</span>
+                        </div>
+                        <div class="summary-stat">
+                            <span class="summary-label">Total Time:</span>
+                            <span class="summary-value" id="summaryTime">--</span>
+                        </div>
+                        <div class="summary-stat">
+                            <span class="summary-label">Average Speed:</span>
+                            <span class="summary-value" id="summarySpeed">--</span>
+                        </div>
+                        <div class="summary-stat">
+                            <span class="summary-label">Hazards Encountered:</span>
+                            <span class="summary-value" id="summaryHazards">--</span>
+                        </div>
+                        <div class="summary-stat">
+                            <span class="summary-label">Total Risk Score:</span>
+                            <span class="summary-value" id="summaryRisk">--</span>
+                        </div>
+                        <div class="summary-stat">
+                            <span class="summary-label">Mission Rating:</span>
+                            <span class="summary-value" id="summaryRating">--</span>
+                        </div>
+                    </div>
+                    <button class="btn-primary" id="newMissionBtn" style="margin-top: 1.5rem;">🔄 Start New Mission</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Path Planning Section -->
+        <div class="pathplan-section" id="pathplanSection" style="display: none;">
+            <!-- Map Canvas -->
+            <div class="card map-card">
+                <h2 class="card-title">🗺️ Terrain Map - Click to Set Start & End Points</h2>
+                <div class="map-controls">
+                    <button class="btn-primary" id="generateMapBtn">Generate Terrain Map</button>
+                    <button class="btn-secondary" id="clearPathBtn">Clear Path</button>
+                    <button class="btn-primary" id="findPathBtn" disabled>Find Optimal Path</button>
+                </div>
+                <canvas id="terrainCanvas" width="800" height="600"></canvas>
+                <div class="map-legend">
+                    <div class="legend-item"><span class="legend-color" style="background: #4CAF50;"></span> Safe Terrain</div>
+                    <div class="legend-item"><span class="legend-color" style="background: #FFC107;"></span> Moderate Risk</div>
+                    <div class="legend-item"><span class="legend-color" style="background: #FF5722;"></span> High Risk</div>
+                    <div class="legend-item"><span class="legend-color" style="background: #2196F3;"></span> Water</div>
+                </div>
+            </div>
+
+            <!-- Route Comparison -->
+            <div class="card routes-card" id="routesCard" style="display: none;">
+                <h2 class="card-title">📊 Route Comparison</h2>
+                <div class="routes-grid" id="routesGrid"></div>
+            </div>
+
+            <!-- Path Details -->
+            <div class="card path-details-card" id="pathDetailsCard" style="display: none;">
+                <h2 class="card-title">🎯 Selected Path Details</h2>
+                <div class="path-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">Total Distance:</span>
+                        <span class="stat-value" id="pathDistance">--</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Risk Score:</span>
+                        <span class="stat-value" id="pathRisk">--</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Estimated Time:</span>
+                        <span class="stat-value" id="pathTime">--</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Algorithm:</span>
+                        <span class="stat-value">A* Pathfinding</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Upload Section -->
+        <div class="upload-section" id="uploadSection">
+        <div class="card upload-card">
+            <h2 class="card-title">Upload Image</h2>
+            <div class="upload-zone" id="uploadZone">
+                <svg class="upload-icon" width="64" height="64" viewBox="0 0 64 64" fill="none">
+                    <path d="M32 16V40M32 16L24 24M32 16L40 24" stroke="#4CAF50" stroke-width="3" stroke-linecap="round"/>
+                    <path d="M16 48H48" stroke="#4CAF50" stroke-width="3" stroke-linecap="round"/>
+                </svg>
+                <p class="upload-text">Drag & drop your image here</p>
+                <p class="upload-subtext">or</p>
+                <button class="btn-primary" id="browseBtn">Browse Files</button>
+                <input type="file" id="fileInput" accept="image/*" hidden>
+                <p class="upload-hint">Supported formats: PNG, JPG, JPEG, GIF, WEBP (Max 16MB)</p>
+            </div>
+        </div>
+
+        <!-- Preview Section -->
+        <div class="card preview-card" id="previewCard" style="display: none;">
+            <h2 class="card-title">Image Preview</h2>
+            <div class="preview-container">
+                <img id="previewImage" src="" alt="Preview">
+            </div>
+            <button class="btn-primary btn-analyze" id="analyzeBtn">Analyze Image</button>
+        </div>
+
+        <!-- Loading Spinner -->
+        <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+            <div class="spinner"></div>
+            <p class="loading-text">Analyzing terrain image...</p>
+        </div>
+
+        <!-- Results Section -->
+        <div class="results-section" id="resultsSection" style="display: none;">
+            <!-- Key Metrics Grid -->
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-icon" style="background: #E3F2FD;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="#2196F3">
+                            <path d="M12 2L2 7L12 12L22 7L12 2Z"/>
+                            <path d="M2 17L12 22L22 17V12L12 17L2 12V17Z" opacity="0.6"/>
+                        </svg>
+                    </div>
+                    <div class="metric-content">
+                        <p class="metric-label">Segmentation Confidence</p>
+                        <p class="metric-value" id="confidenceValue">--</p>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-icon" style="background: #FFF3E0;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="#FF9800">
+                            <path d="M12 2L15 8L22 9L17 14L18 21L12 18L6 21L7 14L2 9L9 8L12 2Z"/>
+                        </svg>
+                    </div>
+                    <div class="metric-content">
+                        <p class="metric-label">Hazard Level</p>
+                        <p class="metric-value hazard-badge" id="hazardValue">--</p>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-icon" style="background: #E8F5E9;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="#4CAF50">
+                            <path d="M12 2C8 2 5 5 5 9C5 13 12 22 12 22C12 22 19 13 19 9C19 5 16 2 12 2Z"/>
+                        </svg>
+                    </div>
+                    <div class="metric-content">
+                        <p class="metric-label">Vegetation Score</p>
+                        <p class="metric-value" id="vegetationValue">--</p>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-icon" style="background: #E1F5FE;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="#03A9F4">
+                            <path d="M12 2C12 2 7 6 7 12C7 15.31 9.69 18 13 18C16.31 18 19 15.31 19 12C19 6 14 2 14 2H12Z"/>
+                        </svg>
+                    </div>
+                    <div class="metric-content">
+                        <p class="metric-label">Moisture Level</p>
+                        <p class="metric-value" id="moistureValue">--</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analysis Details -->
+            <div class="card analysis-card">
+                <h2 class="card-title">Detailed Analysis</h2>
+                
+                <div class="analysis-item">
+                    <div class="analysis-header">
+                        <span class="analysis-label">Terrain Roughness</span>
+                        <span class="analysis-percentage" id="roughnessPercent">--</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="roughnessBar" style="width: 0%;"></div>
+                    </div>
+                </div>
+
+                <div class="speed-recommendation">
+                    <div class="speed-icon">🚗</div>
+                    <div class="speed-content">
+                        <p class="speed-label">Recommended Speed</p>
+                        <p class="speed-value" id="speedValue">-- km/h</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Environmental Metrics Chart -->
+            <div class="card chart-card">
+                <h2 class="card-title">Environmental Metrics</h2>
+                <canvas id="metricsChart"></canvas>
+            </div>
+        </div>
+        </div>
+
+    </div>
+
+    <script src="static/script.js"></script>
+</body>
+</html>
